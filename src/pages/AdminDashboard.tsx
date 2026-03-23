@@ -83,7 +83,7 @@ const AdminDashboard = () => {
                 <Users className="h-5 w-5 text-primary" />
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold"><AnimatedCounter end={totalUsers} /></div>
+                <div className="text-3xl font-bold"><AnimatedCounter target={totalUsers} /></div>
               </CardContent>
             </Card>
           </AnimatedCard>
