@@ -95,7 +95,7 @@ const AdminDashboard = () => {
                 <UserCheck className="h-5 w-5 text-secondary" />
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold"><AnimatedCounter end={totalUsers - adminCount} /></div>
+                <div className="text-3xl font-bold"><AnimatedCounter target={totalUsers - adminCount} /></div>
               </CardContent>
             </Card>
           </AnimatedCard>
