@@ -107,7 +107,7 @@ const AdminDashboard = () => {
                 <Shield className="h-5 w-5 text-accent" />
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold"><AnimatedCounter end={adminCount} /></div>
+                <div className="text-3xl font-bold"><AnimatedCounter target={adminCount} /></div>
               </CardContent>
             </Card>
           </AnimatedCard>

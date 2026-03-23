@@ -48,7 +48,7 @@ const UserDashboard = () => {
           <p className="mt-2 opacity-80">Here's your personal dashboard</p>
         </motion.div>
 
-        <AnimatedCard index={0}>
+        <AnimatedCard delay={0}>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="flex items-center gap-2">
