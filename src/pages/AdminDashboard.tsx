@@ -88,7 +88,7 @@ const AdminDashboard = () => {
             </Card>
           </AnimatedCard>
 
-          <AnimatedCard index={1}>
+          <AnimatedCard delay={0.1}>
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium">Regular Users</CardTitle>
