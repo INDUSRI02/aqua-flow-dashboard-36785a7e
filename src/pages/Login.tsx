@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Waves, Eye, EyeOff, LogIn, Loader2 } from "lucide-react";
@@ -10,6 +10,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 const Login = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
@@ -19,34 +21,51 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const normalizedEmail = useMemo(() => email.trim().toLowerCase(), [email]);
+  const forgotPasswordHref = normalizedEmail
+    ? `/forgot-password?email=${encodeURIComponent(normalizedEmail)}`
+    : "/forgot-password";
+  const shouldShowResetLink = error.toLowerCase().includes("reset") || error.toLowerCase().includes("password");
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    
-    if (!email || !password) {
-      setError("Please fill in all fields");
+
+    if (!normalizedEmail || !password) {
+      setError("Please enter both your email and password.");
+      return;
+    }
+
+    if (!emailPattern.test(normalizedEmail)) {
+      setError("Please enter a valid email address.");
       return;
     }
 
     setLoading(true);
+
     try {
-      const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
-      
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email: normalizedEmail,
+        password,
+      });
+
       if (authError) {
-        if (authError.message.includes("Invalid login")) {
-          setError("Invalid email or password. Please try again.");
-        } else if (authError.message.includes("Email not confirmed")) {
-          setError("Please verify your email before signing in.");
+        const message = authError.message.toLowerCase();
+
+        if (message.includes("invalid login credentials") || message.includes("invalid login")) {
+          setError("We couldn’t sign you in with those details. Check your password or reset it.");
+        } else if (message.includes("email not confirmed")) {
+          setError("Your account is not verified yet. Please check your email first.");
         } else {
-          setError(authError.message);
+          setError("We couldn’t sign you in right now. Please try again.");
         }
         return;
       }
 
-      toast({ title: "Welcome back! 👋", description: "Login successful" });
-      navigate("/");
+      toast({ title: "Welcome back!", description: "You are now signed in." });
+      navigate("/", { replace: true });
     } catch (err) {
-      setError("Connection error. Please check your internet and try again.");
+      setError("Connection issue detected. Please try again in a moment.");
     } finally {
       setLoading(false);
     }
@@ -70,7 +89,7 @@ const Login = () => {
         <Card className="border-border/50 shadow-glow">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl">Welcome Back</CardTitle>
-            <CardDescription>Sign in to your account to continue</CardDescription>
+            <CardDescription>Sign in with your registered account</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleLogin} className="space-y-4">
@@ -78,9 +97,14 @@ const Login = () => {
                 <motion.div
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
-                  className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm border border-destructive/20"
+                  className="space-y-2 rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive"
                 >
-                  {error}
+                  <p>{error}</p>
+                  {shouldShowResetLink && (
+                    <Link to={forgotPasswordHref} className="inline-flex font-medium underline underline-offset-4">
+                      Reset password instead
+                    </Link>
+                  )}
                 </motion.div>
               )}
 
@@ -91,8 +115,9 @@ const Login = () => {
                   type="email"
                   placeholder="you@example.com"
                   value={email}
-                  onChange={e => setEmail(e.target.value)}
+                  onChange={(e) => setEmail(e.target.value)}
                   disabled={loading}
+                  autoComplete="email"
                 />
               </div>
 
@@ -104,30 +129,32 @@ const Login = () => {
                     type={showPassword ? "text" : "password"}
                     placeholder="Enter your password"
                     value={password}
-                    onChange={e => setPassword(e.target.value)}
+                    onChange={(e) => setPassword(e.target.value)}
                     disabled={loading}
+                    autoComplete="current-password"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                     tabIndex={-1}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
               </div>
 
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-2">
                   <Checkbox
                     id="remember"
                     checked={rememberMe}
-                    onCheckedChange={(c) => setRememberMe(c === true)}
+                    onCheckedChange={(checked) => setRememberMe(checked === true)}
                   />
-                  <Label htmlFor="remember" className="text-sm cursor-pointer">Remember me</Label>
+                  <Label htmlFor="remember" className="cursor-pointer text-sm">Remember me</Label>
                 </div>
-                <Link to="/forgot-password" className="text-sm text-primary hover:underline">
+                <Link to={forgotPasswordHref} className="text-sm text-primary hover:underline">
                   Forgot password?
                 </Link>
               </div>
@@ -137,16 +164,16 @@ const Login = () => {
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <>
-                    <LogIn className="h-4 w-4 mr-1" />
+                    <LogIn className="mr-1 h-4 w-4" />
                     Sign In
                   </>
                 )}
               </Button>
             </form>
 
-            <p className="text-center text-sm text-muted-foreground mt-6">
-              Don't have an account?{" "}
-              <Link to="/register" className="text-primary hover:underline font-medium">
+            <p className="mt-6 text-center text-sm text-muted-foreground">
+              Don&apos;t have an account?{" "}
+              <Link to="/register" className="font-medium text-primary hover:underline">
                 Sign up
               </Link>
             </p>
