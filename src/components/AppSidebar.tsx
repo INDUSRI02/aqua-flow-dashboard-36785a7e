@@ -1,9 +1,10 @@
+import { useState } from "react";
 import {
   LayoutDashboard, Droplets, AlertTriangle, Brain, BookOpen,
-  HelpCircle, Users, Settings, Waves, User, Shield, LogOut
+  HelpCircle, Users, Settings, Waves, User, Shield, LogOut, Loader2
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent,
@@ -12,6 +13,7 @@ import {
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
+import { toast } from "@/hooks/use-toast";
 
 const userItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
@@ -37,9 +39,19 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
+  const navigate = useNavigate();
   const { role, profile, signOut } = useAuth();
+  const [loggingOut, setLoggingOut] = useState(false);
 
   const items = role === "admin" ? adminItems : userItems;
+
+  const handleSignOut = async () => {
+    setLoggingOut(true);
+    await signOut();
+    toast({ title: "Signed out", description: "You have been logged out safely." });
+    navigate("/login", { replace: true });
+    setLoggingOut(false);
+  };
 
   return (
     <Sidebar collapsible="icon">
@@ -85,11 +97,17 @@ export function AppSidebar() {
 
         <div className="mt-auto p-4">
           {!collapsed && profile?.display_name && (
-            <p className="text-xs text-muted-foreground mb-2 truncate">{profile.display_name}</p>
+            <p className="mb-2 truncate text-xs text-muted-foreground">{profile.display_name}</p>
           )}
-          <Button variant="ghost" size="sm" onClick={signOut} className="w-full justify-start text-muted-foreground hover:text-destructive">
-            <LogOut className="h-4 w-4 mr-2" />
-            {!collapsed && "Logout"}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleSignOut}
+            disabled={loggingOut}
+            className="w-full justify-start text-muted-foreground hover:text-destructive"
+          >
+            {loggingOut ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogOut className="mr-2 h-4 w-4" />}
+            {!collapsed && (loggingOut ? "Signing out..." : "Logout")}
           </Button>
         </div>
       </SidebarContent>
