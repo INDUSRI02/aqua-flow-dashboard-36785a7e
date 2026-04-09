@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Waves, Eye, EyeOff, LogIn } from "lucide-react";
+import { Waves, Eye, EyeOff, LogIn, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,18 +29,27 @@ const Login = () => {
     }
 
     setLoading(true);
-    const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
-    
-    if (authError) {
-      setError(authError.message);
-      setLoading(false);
-      return;
-    }
+    try {
+      const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
+      
+      if (authError) {
+        if (authError.message.includes("Invalid login")) {
+          setError("Invalid email or password. Please try again.");
+        } else if (authError.message.includes("Email not confirmed")) {
+          setError("Please verify your email before signing in.");
+        } else {
+          setError(authError.message);
+        }
+        return;
+      }
 
-    toast({ title: "Welcome back!", description: "Login successful" });
-    // Role-based redirect happens in App.tsx
-    navigate("/");
-    setLoading(false);
+      toast({ title: "Welcome back! 👋", description: "Login successful" });
+      navigate("/");
+    } catch (err) {
+      setError("Connection error. Please check your internet and try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -61,7 +70,7 @@ const Login = () => {
         <Card className="border-border/50 shadow-glow">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl">Welcome Back</CardTitle>
-            <CardDescription>Sign in to your account</CardDescription>
+            <CardDescription>Sign in to your account to continue</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleLogin} className="space-y-4">
@@ -69,7 +78,7 @@ const Login = () => {
                 <motion.div
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
-                  className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm"
+                  className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm border border-destructive/20"
                 >
                   {error}
                 </motion.div>
@@ -83,7 +92,7 @@ const Login = () => {
                   placeholder="you@example.com"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
-                  className="focus:ring-primary"
+                  disabled={loading}
                 />
               </div>
 
@@ -93,14 +102,16 @@ const Login = () => {
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
-                    placeholder="••••••••"
+                    placeholder="Enter your password"
                     value={password}
                     onChange={e => setPassword(e.target.value)}
+                    disabled={loading}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    tabIndex={-1}
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
@@ -123,12 +134,10 @@ const Login = () => {
 
               <Button type="submit" className="w-full gradient-primary" disabled={loading}>
                 {loading ? (
-                  <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }}>
-                    <LogIn className="h-4 w-4" />
-                  </motion.div>
+                  <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <>
-                    <LogIn className="h-4 w-4" />
+                    <LogIn className="h-4 w-4 mr-1" />
                     Sign In
                   </>
                 )}

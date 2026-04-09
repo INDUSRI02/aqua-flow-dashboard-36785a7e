@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Waves, Eye, EyeOff, UserPlus } from "lucide-react";
+import { Waves, Eye, EyeOff, UserPlus, Loader2, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,6 +18,7 @@ const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,25 +38,63 @@ const Register = () => {
     }
 
     setLoading(true);
-    const { error: authError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { display_name: name },
-        emailRedirectTo: window.location.origin,
-      },
-    });
+    try {
+      const { data, error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { display_name: name },
+          emailRedirectTo: window.location.origin,
+        },
+      });
 
-    if (authError) {
-      setError(authError.message);
+      if (authError) {
+        if (authError.message.includes("already registered")) {
+          setError("This email is already registered. Please sign in instead.");
+        } else {
+          setError(authError.message);
+        }
+        return;
+      }
+
+      // With auto-confirm enabled, user is immediately signed in
+      if (data.session) {
+        setSuccess(true);
+        toast({ title: "Account created! 🎉", description: "Welcome to AquaSave!" });
+        setTimeout(() => navigate("/"), 1500);
+      } else {
+        setSuccess(true);
+        toast({ title: "Account created! 🎉", description: "You can now sign in." });
+        setTimeout(() => navigate("/login"), 2000);
+      }
+    } catch (err) {
+      setError("Connection error. Please check your internet and try again.");
+    } finally {
       setLoading(false);
-      return;
     }
-
-    toast({ title: "Account created!", description: "Please check your email to verify your account, or sign in directly." });
-    navigate("/login");
-    setLoading(false);
   };
+
+  if (success) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <motion.div
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          className="text-center space-y-4"
+        >
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: 0.2, type: "spring" }}
+          >
+            <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto" />
+          </motion.div>
+          <h2 className="text-2xl font-bold">Account Created!</h2>
+          <p className="text-muted-foreground">Redirecting you now...</p>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
@@ -82,9 +121,8 @@ const Register = () => {
               {error && (
                 <motion.div
                   initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: [0, -5, 5, -5, 0] }}
-                  transition={{ duration: 0.4 }}
-                  className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm"
+                  animate={{ opacity: 1, x: 0 }}
+                  className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm border border-destructive/20"
                 >
                   {error}
                 </motion.div>
@@ -92,12 +130,12 @@ const Register = () => {
 
               <div className="space-y-2">
                 <Label htmlFor="name">Full Name</Label>
-                <Input id="name" placeholder="John Doe" value={name} onChange={e => setName(e.target.value)} />
+                <Input id="name" placeholder="John Doe" value={name} onChange={e => setName(e.target.value)} disabled={loading} />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" placeholder="you@example.com" value={email} onChange={e => setEmail(e.target.value)} />
+                <Input id="email" type="email" placeholder="you@example.com" value={email} onChange={e => setEmail(e.target.value)} disabled={loading} />
               </div>
 
               <div className="space-y-2">
@@ -106,11 +144,12 @@ const Register = () => {
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
-                    placeholder="••••••••"
+                    placeholder="At least 6 characters"
                     value={password}
                     onChange={e => setPassword(e.target.value)}
+                    disabled={loading}
                   />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" tabIndex={-1}>
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
@@ -121,20 +160,19 @@ const Register = () => {
                 <Input
                   id="confirm"
                   type="password"
-                  placeholder="••••••••"
+                  placeholder="Re-enter your password"
                   value={confirmPassword}
                   onChange={e => setConfirmPassword(e.target.value)}
+                  disabled={loading}
                 />
               </div>
 
               <Button type="submit" className="w-full gradient-primary" disabled={loading}>
                 {loading ? (
-                  <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }}>
-                    <UserPlus className="h-4 w-4" />
-                  </motion.div>
+                  <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <>
-                    <UserPlus className="h-4 w-4" />
+                    <UserPlus className="h-4 w-4 mr-1" />
                     Create Account
                   </>
                 )}
